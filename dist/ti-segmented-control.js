@@ -5,15 +5,18 @@ angular.module('ti-segmented-control', []
         transclude: true,
         replace: true,
         scope: {
-            onSelect: "&"
+            onSelect: "&",
+            allowMultiSelect: "@multiselect"
         },
         template: '<div class=\"buttons\"><div class=\"button-bar bar-light ti-segmented-control\" ng-transclude></div></div>',
 
-        controller: ['$scope', function($scope){
+        controller: function($scope){
             this.buttons = [];
+            this.selectedButtons = [];
+            this.allowMultiSelect = $scope.allowMultiSelect || false;
             this.setSelectedButton = function (title) {
                 $scope.onSelect({$index: this.buttons.indexOf(title)});
-            }
+            };
             var style = window.document.createElement('style');
             style.type = 'text/css';
             style.innerHTML += '.button.button-outline.ti-segmented-control:first-child { border-top-left-radius: 5px;border-bottom-left-radius: 5px; }';
@@ -21,30 +24,50 @@ angular.module('ti-segmented-control', []
             style.innerHTML += '.button.button-outline.ti-segmented-control:last-child { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }';
             style.innerHTML += '.button.button-outline.ti-segmented-control.activated { color: #fafafa;box-shadow: none; }';
             window.document.getElementsByTagName('head')[0].appendChild(style);
-        }],
-        link: ['$scope', function (scope) {
-        }]
+        },
+        link: function (scope) {
+        }
     }
 }).directive('tiSegmentedControlButton', function () {
     return {
         replace: true,
-        transclude: true,
         require: '^tiSegmentedControl',
         scope: {
-            title: '='
+            title: '@title',
+            value: '@value'
         },
-        template: '<a class=\"button button-outline ti-segmented-control\"><ng-transclude></ng-transclude></a>',
+        template: '<a class=\"button button-outline ti-segmented-control\">{{title}}</a>',
         link: function(scope, element, attr, segmentedControlCtrl){
-            segmentedControlCtrl.buttons.push(scope.title);
-            if(attr.selected != undefined) element.addClass('active');
+            var val = scope.value || scope.title;
+            segmentedControlCtrl.buttons.push(val);
+            var selectedValues = segmentedControlCtrl.value || '';
+            var isSelected = (selectedValues.split(',').indexOf(val) > -1);
+            if(isSelected || attr.selected != undefined) element.addClass('active');
 
             element.bind('click', function(){
-                segmentedControlCtrl.setSelectedButton(scope.title);
+              segmentedControlCtrl.setSelectedButton(scope.value || scope.title);
+              if (segmentedControlCtrl.allowMultiSelect) {
+                if (element.hasClass('active')) {
+                  element.removeClass('active');
+                } else {
+                  element.addClass('active');
+                }
+                var selected = [];
                 var buttons = angular.element(angular.element(element.parent()[0]).children());
-                for(var i = 0; i < buttons.length; i++){
-                    angular.element(buttons[i]).removeClass('active');
+                for (var i = 0; i < buttons.length; i++) {
+                  if (angular.element(buttons[i]).hasClass('active')) {
+                    selected.push(angular.element(buttons[i]));
+                  }
+                }
+                segmentedControlCtrl.selectedButtons = selected;
+
+              } else {
+                var buttons = angular.element(angular.element(element.parent()[0]).children());
+                for (var i = 0; i < buttons.length; i++) {
+                  angular.element(buttons[i]).removeClass('active');
                 }
                 element.addClass('active');
+              }
             });
         }
     }
